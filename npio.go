@@ -23,7 +23,7 @@ const (
 	CLOCK_BASE_BP   = 0x00101000
 	GPIO_PWM_BP     = 0x01C21000
 
-	MEM_LENGTH = 6 * 1024
+	BLOCK_SIZE = 6 * 1024
 	MAP_SIZE   = 4096 * 2
 	MAP_MASK   = (MAP_SIZE - 1)
 )
@@ -219,7 +219,9 @@ func WritePin(pin Pin, state State) {
 		return
 	}
 	phyaddr = uint32(SUNXI_GPIO_BASE + (bank * 36) + 0x10) // +0x10 -> data reg
+	//fmt.Printf("pin=%d pv=%02d bank=%d index=%d phyaddr=%X state=%d\n", pin, pv, bank, index, phyaddr, state)
 	memlock.Lock()
+	regval = readl(phyaddr)
 	if state == Low {
 		regval &= ^(1 << index)
 		writel(regval, phyaddr)
@@ -308,6 +310,7 @@ func PullMode(pin Pin, pull Pull) {
 	}
 	pud &= 3
 	phyaddr = uint32(SUNXI_GPIO_BASE + (bank * 36) + 0x1c + sub*4) // +0x10 -> pullUpDn reg
+	regval = readl(phyaddr)
 	regval &= ^(3 << (sub_index << 1))
 	regval |= (pud << (sub_index << 1))
 	writel(regval, phyaddr)
@@ -330,19 +333,19 @@ func Open() (err error) {
 	defer memlock.Unlock()
 
 	// Memory map GPIO registers to slice
-	gpioMem, gpioMem8, err = memMap(file.Fd(), GPIO_BASE_BP)
+	gpioMem, gpioMem8, err = memMap(file.Fd(), BLOCK_SIZE*10, GPIO_BASE_BP)
 	if err != nil {
 		return
 	}
 
 	// Memory map clock registers to slice
-	clkMem, clkMem8, err = memMap(file.Fd(), CLOCK_BASE_BP)
+	clkMem, clkMem8, err = memMap(file.Fd(), BLOCK_SIZE, CLOCK_BASE_BP)
 	if err != nil {
 		return
 	}
 
 	// Memory map pwm registers to slice
-	pwmMem, pwmMem8, err = memMap(file.Fd(), GPIO_PWM_BP)
+	pwmMem, pwmMem8, err = memMap(file.Fd(), BLOCK_SIZE, GPIO_PWM_BP)
 	if err != nil {
 		return
 	}
@@ -350,11 +353,11 @@ func Open() (err error) {
 	return nil
 }
 
-func memMap(fd uintptr, base int64) (mem []uint32, mem8 []byte, err error) {
+func memMap(fd uintptr, length int, base int64) (mem []uint32, mem8 []byte, err error) {
 	mem8, err = syscall.Mmap(
 		int(fd),
 		base,
-		MEM_LENGTH,
+		length,
 		syscall.PROT_READ|syscall.PROT_WRITE,
 		syscall.MAP_SHARED,
 	)

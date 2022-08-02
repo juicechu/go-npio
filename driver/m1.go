@@ -9,6 +9,16 @@ func (d *M1) PinToGpio(p uint) int {
 }
 
 func NewM1() Driver {
+	// WiringPiNr. gegeben .. -> Array GPIOx orange pi guenter neu
+	// A ab 0x00, B ab 0x20, C ab 0x40, D ab 0x50 ......
+	// 00 - 31 = PA00-PA31
+	// 32 - 63 = PB00-PB31
+	// 64 - 95 = PC00-PC31
+	// 96 - 127 = PD00-PD31
+	// 128 - 159 = PE00-PE31
+	// 160 - 191 = PF00-PF31
+	// 192 - 223 = PG00-PG31
+	// nanopi m1 done
 	return &M1{
 		pintoGpio: [MAX_PIN_COUNT]int{
 			0, 6, //  0,  1
